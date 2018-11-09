@@ -26,4 +26,4 @@ echo "Setting up Jenkins in project ${GUID}-jenkins from Git Repo ${REPO} for Cl
 # * GUID: the GUID used in all the projects
 # * CLUSTER: the base url of the cluster used (e.g. na39.openshift.opentlc.com)
 
-# To be Implemented by Student
+. ../templates/jenkins.sh
