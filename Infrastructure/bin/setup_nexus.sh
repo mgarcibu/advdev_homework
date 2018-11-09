@@ -28,4 +28,4 @@ echo "Setting up Nexus in project $GUID-nexus"
 # Ideally just calls a template
 # oc new-app -f ../templates/nexus.yaml --param .....
 
-. ../templates/nexus.sh
+. ../templates/nexus.sh $GUID
