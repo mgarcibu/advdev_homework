@@ -11,4 +11,4 @@ echo "Setting up Parks Development Environment in project ${GUID}-parks-dev"
 
 # Code to set up the parks development project.
 
-# To be Implemented by Student
+. ../templates/dev.sh
