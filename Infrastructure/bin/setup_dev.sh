@@ -95,7 +95,7 @@ oc set probe dc/nationalparks --liveness --initial-delay-seconds 30 --failure-th
 oc set probe dc/parksmap --readiness --initial-delay-seconds 30 --failure-threshold 3 --get-url=http://:8080/ws/healthz/ -n ${GUID}-parks-dev
 oc set probe dc/parksmap --liveness --initial-delay-seconds 30 --failure-threshold 3 --get-url=http://:8080/ws/healthz/ -n ${GUID}-parks-dev
 
-oc create configmap parksdb-conf -n ${GUID}-parks-dev \
+oc create configmap parksdb-config -n ${GUID}-parks-dev \
        --from-literal=DB_HOST=mongodb \
        --from-literal=DB_PORT=27017 \
        --from-literal=DB_USERNAME=mongodb_user \
@@ -105,12 +105,12 @@ oc create configmap mlbparks-config --from-literal=APPNAME="MLB Parks (Dev)" -n 
 oc create configmap nationalparks-config --from-literal=APPNAME="National Parks (Dev)" -n f9ff-parks-dev
 oc create configmap parksmap-config --from-literal=APPNAME="ParksMap (Dev)" -n f9ff-parks-dev
 
-oc set env dc/mlbparks --from=configmap/parksdb-conf -n ${GUID}-parks-dev
-oc set env dc/mlbparks --from=configmap/nationalparks-conf -n ${GUID}-parks-dev
-oc set env dc/nationalparks --from=configmap/parksdb-conf -n ${GUID}-parks-dev
-oc set env dc/nationalparks --from=configmap/nationalparks-conf -n ${GUID}-parks-dev
-oc set env dc/parksmap --from=configmap/parksdb-conf -n ${GUID}-parks-dev
-oc set env dc/parksmap --from=configmap/nationalparks-conf -n ${GUID}-parks-dev
+oc set env dc/mlbparks --from=configmap/parksdb-config -n ${GUID}-parks-dev
+oc set env dc/mlbparks --from=configmap/mlbparks-config -n ${GUID}-parks-dev
+oc set env dc/nationalparks --from=configmap/parksdb-config -n ${GUID}-parks-dev
+oc set env dc/nationalparks --from=configmap/nationalparks-config -n ${GUID}-parks-dev
+oc set env dc/parksmap --from=configmap/parksdb-config -n ${GUID}-parks-dev
+oc set env dc/parksmap --from=configmap/parksmap-config -n ${GUID}-parks-dev
 
 oc set deployment-hook dc/mlbparks --post -- curl -s http://mlbparks:8080/ws/data/load/ -n ${GUID}-parks-dev
 oc set deployment-hook dc/nationalparks --post -- curl -s http://nationalparks:8080/ws/data/load/ -n ${GUID}-parks-dev
