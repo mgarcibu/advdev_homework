@@ -76,8 +76,8 @@ oc new-build --binary=true --name=nationalparks redhat-openjdk18-openshift:1.2 -
 oc new-build --binary=true --name=parksmap redhat-openjdk18-openshift:1.2 -n f9ff-parks-dev
 
 oc new-app f9ff-parks-dev/mlbparks:0.0-0 --allow-missing-imagestream-tags=true --name=mlbparks -l type=parksmap-backend --allow-missing-imagestream-tags=true -n f9ff-parks-dev
-oc new-app f9ff-parks-dev/nationalparks:0.0-0 --allow-missing-imagestream-tags=true --name=national-parks-dev -l type=parksmap-backend --allow-missing-imagestream-tags=true -n f9ff-parks-dev
-oc new-app f9ff-parks-dev/parksmap:0.0-0 --allow-missing-imagestream-tags=true --name=parksmap-dev -l type=parksmap-frontend --allow-missing-imagestream-tags=true -n f9ff-parks-dev
+oc new-app f9ff-parks-dev/nationalparks:0.0-0 --allow-missing-imagestream-tags=true --name=nationalparks -l type=parksmap-backend --allow-missing-imagestream-tags=true -n f9ff-parks-dev
+oc new-app f9ff-parks-dev/parksmap:0.0-0 --allow-missing-imagestream-tags=true --name=parksmap -l type=parksmap-frontend --allow-missing-imagestream-tags=true -n f9ff-parks-dev
 
 oc set triggers dc mlbparks --remove-all -n f9ff-parks-dev
 oc set triggers dc nationalparks --remove-all -n f9ff-parks-dev
