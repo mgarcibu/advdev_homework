@@ -31,3 +31,20 @@ oc new-app jenkins-persistent --param ENABLE_OAUTH=true --param MEMORY_LIMIT=2Gi
 oc new-build  -D $'FROM docker.io/openshift/jenkins-agent-maven-35-centos7:v3.11\n
       USER root\nRUN yum -y install skopeo && yum clean all\n
       USER 1001' --name=jenkins-agent-appdev -n f9ff-jenkins
+
+#Setting up jenkins pipelines on Openshift 
+echo "Creating and configuring Build Configs for 3 pipelines"
+oc new-build ${REPO} --name="mlbparks-pipeline" --strategy=pipeline --context-dir="MLBParks" -n $GUID-jenkins
+oc set env bc/mlbparks-pipeline CLUSTER=${CLUSTER} GUID=${GUID} -n $GUID-jenkins
+
+oc new-build ${REPO} --name="nationalparks-pipeline" --strategy=pipeline --context-dir="Nationalparks" -n $GUID-jenkins
+oc set env bc/nationalparks-pipeline CLUSTER=${CLUSTER} GUID=${GUID} -n $GUID-jenkins
+
+oc new-build ${REPO} --name="parksmap-pipeline" --strategy=pipeline --context-dir="ParksMap" -n $GUID-jenkins
+oc set env bc/parksmap-pipeline CLUSTER=${CLUSTER} GUID=${GUID} -n $GUID-jenkins
+
+#Delete the empty build created by default
+sleep 10
+oc delete build/mlbparks-pipeline-1 -n $GUID-jenkins
+oc delete build/nationalparks-pipeline-1 -n $GUID-jenkins
+oc delete build/parksmap-pipeline-1 -n $GUID-jenkins
