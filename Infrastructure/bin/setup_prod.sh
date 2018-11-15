@@ -75,7 +75,7 @@ spec:
           requests:
             storage: "4Gi"' | oc create -f -
 
-oc create configmap parksdb-config -n ${GUID}-parks-prod \
+oc create configmap parksdb-conf -n ${GUID}-parks-prod \
        --from-literal=DB_HOST=mongodb \
        --from-literal=DB_PORT=27017 \
        --from-literal=DB_USERNAME=mongodb_user \
