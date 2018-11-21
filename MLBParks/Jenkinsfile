@@ -20,6 +20,122 @@ podTemplate(
     // You need to build the application in directory `MLBParks`.
     // Also copy "../nexus_settings.xml" to your build directory
     // and replace 'GUID' in the file with your ${GUID} to point to >your< Nexus instance
+  
+    // Checkout Source Code
+    //stage('Checkout Source') {
+    //  git credentialsId: 'gogs', url: 'http://gogs-mgb-gogs.apps.8a64.openshift.opentlc.com/CICDLabs/openshift-tasks-private.git'
+    //}
+    
+    dir(appDir){
+      // Define Maven Command. Make sure it points to the correct
+      // settings for our Nexus installation (use the service to
+      // bypass the router). The file nexus_openshift_settings.xml
+      // needs to be in the Source Code repository.
+      def mvnCmd = "mvn -s ./nexus_settings.xml" TODO (Poner URL Nexus en el settings.xml)
+      
+      // The following variables need to be defined at the top level
+      // and not inside the scope of a stage - otherwise they would not
+      // be accessible from other stages.
+      // Extract version and other properties from the pom.xml
+      def groupId    = getGroupIdFromPom("pom.xml")
+      def artifactId = getArtifactIdFromPom("pom.xml")
+      def version    = getVersionFromPom("pom.xml")
+      
+      // Set the tag for the development image: version + build number
+      def devTag  = "${version}-${BUILD_NUMBER}"
+      // Set the tag for the production image: version
+      def prodTag = "${version}"
+  
+      // Using Maven build the war file
+      // Do not run tests in this step
+      stage('Build war') {
+        echo "Building version ${version}"
+        sh "${mvnCmd} clean package -DskipTests"
+      }
+  
+      // Using Maven run the unit tests
+      stage('Unit Tests') {
+        echo "Running Unit Tests"
+        sh "${mvnCmd} test"
+      }
+  
+      // Using Maven call SonarQube for Code Analysis
+      stage('Code Analysis') {
+        echo "Running Code Analysis"
+        sh "${mvnCmd} sonar:sonar -Dsonar.host.url=TODO(Poner URL Sonar) -Dsonar.projectName=${JOB_BASE_NAME}-${devTag}"
+      }
+  
+      // Publish the built war file to Nexus
+      stage('Publish to Nexus') {
+        echo "Publish to Nexus"
+        sh "${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::http://nexus3-mgb-nexus.apps.8a64.openshift.opentlc.com/repository/releases TODO(Poner URL Nexus)"
+      }
+  
+      // Build the OpenShift Image in OpenShift and tag it.
+      stage('Build and Tag OpenShift Image') {
+        echo "Building OpenShift container image tasks:${devTag}"
+        // Start Binary Build in OpenShift using the file we just published
+        sh "oc start-build $artifactId --follow --from-file=./target/$artifactId.war -n $GUID-parks-dev"
+        // Tag the image using the devTag
+        openshiftTag alias: 'false', destStream: artifactId, destTag: devTag, destinationNamespace: GUID'-parks-dev', namespace: GUID'-parks-dev', srcStream:artifactId 'tasks', srcTag: 'latest', verbose: 'false'
+      }
+  
+      // Deploy the built image to the Development Environment.
+      stage('Deploy to Dev') {
+        echo "Deploying container image to Development Project"
+        // Update the Image on the Development Deployment Config
+        sh "oc set image dc/$artifactId $artifactId=docker-registry.default.svc:5000/$GUID-parks-dev/tasks:${devTag} -n $GUID-parks-dev"
+        // Deploy the development application
+        openshiftDeploy depCfg: artifactId, namespace: GUID'-parks-dev', verbose: 'false', waitTime: '', waitUnit: 'sec'
+        openshiftVerifyDeployment depCfg: artifactId, namespace: GUID'-parks-dev', replicaCount: '1', verbose: 'false', verifyReplicaCount: 'false', waitTime: '', waitUnit: 'sec'
+        openshiftVerifyService namespace: GUID'-parks-dev', svcName: artifactId, verbose: 'false'
+      }
+  
+      // Run Integration Tests in the Development Environment.
+      stage('Integration Tests') {
+        echo "Running Integration Tests"
+        sleep 30
+        sh "curl -s -o /dev/null -w '%{http_code}\n' http://${artifactId}.${GUID}.svc:8080/ws/info/ | fgrep 200"
+      }
+  
+      // Copy Image to Nexus Docker Registry
+      stage('Copy Image to Nexus Docker Registry') {
+        echo "Copy image to Nexus Docker Registry"
+        sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds openshift:\$(oc whoami -t) --dest-creds admin:admin123 docker://docker-registry-default.apps.8a64.openshift.opentlc.com/${GUID}-parks-dev/${artifactId}:${devTag} docker://nexus-registry-${GUID}-nexus.apps.8a64.openshift.opentlc.com/tasks:${devTag}"
+        // Tag the built image with the production tag
+        openshiftTag alias: 'false', destStream: artifactId, destTag: prodTag, destinationNamespace: GUID'-parks-dev', namespace: GUID'-parks-dev', srcStream: artifactId, srcTag: devTag, verbose: 'false'
+      }
+  
+      // Blue/Green Deployment into Production
+      // -------------------------------------
+      // Do not activate the new version yet.
+      def destApp   = "${artifactId}-green"
+      def activeApp = ""
+  
+    stage('Blue/Green Production Deployment') {
+      // your project names
+      activeApp = sh(returnStdout: true, script: "oc get route ${artifactId} -n ${GUID}-parks-prod -o jsonpath='{ .spec.to.name }'").trim()
+      if (activeApp == "${artifactId}-green") {
+        destApp = "${artifactId}-blue"
+      }
+      echo "Active Application:      " + activeApp
+      echo "Destination Application: " + destApp
+      // Update the Image on the Production Deployment Config
+      sh "oc set image dc/${destApp} ${destApp}=docker-registry.default.svc:5000/mgb-tasks-dev/tasks:${prodTag} -n mgb-tasks-prod"
+      // Update the Config Map which contains the users for the Tasks application
+      sh "oc delete configmap ${destApp}-config -n mgb-tasks-prod --ignore-not-found=true"
+      sh "oc create configmap ${destApp}-config --from-file=./configuration/application-users.properties --from-file=./configuration/application-roles.properties -n mgb-tasks-prod"
+      // Deploy the inactive application
+      openshiftDeploy depCfg: destApp, namespace: 'mgb-tasks-prod', verbose: 'false', waitTime: '', waitUnit: 'sec'
+      openshiftVerifyDeployment depCfg: destApp, namespace: 'mgb-tasks-prod', replicaCount: '1', verbose: 'false', verifyReplicaCount: 'true', waitTime: '', waitUnit: 'sec'
+      openshiftVerifyService namespace: 'mgb-tasks-prod', svcName: destApp, verbose: 'false'
+    }
+  
+    stage('Switch over to new Version') {
+      input "Switch Production?"
+      echo "Switching Production application to ${destApp}."
+      sh 'oc patch route tasks -n mgb-tasks-prod -p \'{"spec":{"to":{"name":"' + destApp + '"}}}\''
+    }
  
   }
 }
