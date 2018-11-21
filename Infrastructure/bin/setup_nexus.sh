@@ -35,7 +35,7 @@ oc new-app sonatype/nexus3:latest
 oc expose svc nexus3
 oc rollout pause dc nexus3
 oc patch dc nexus3 --patch='{ "spec": { "strategy": { "type": "Recreate" }}}'
-oc set resources dc nexus3 --limits=memory=2Gi,cpu=2 --requests=memory=1Gi,cpu=500m
+oc set resources dc nexus3 --limits=memory=3Gi,cpu=2 --requests=memory=2Gi,cpu=500m
 
 echo "apiVersion: v1
 kind: PersistentVolumeClaim
@@ -55,13 +55,14 @@ oc set probe dc/nexus3 --readiness --failure-threshold 3 --initial-delay-seconds
 
 oc rollout resume dc nexus3
 
-while : ; do
-  echo "Checking if Nexus is Ready..."
-  oc get pod -n ${GUID}-nexus|grep '\-2\-'|grep -v deploy|grep "1/1"
-  [[ "$?" == "1" ]] || break
-  echo "...no. Sleeping 10 seconds."
-  sleep 10
-done
+sleep 60
+#while : ; do
+#  echo "Checking if Nexus is Ready..."
+#  oc get pod -n ${GUID}-nexus|grep '\-2\-'|grep -v deploy|grep "1/1"
+#  [[ "$?" == "1" ]] || break
+#  echo "...no. Sleeping 10 seconds."
+#  sleep 10
+#done
 
 curl -o setup_nexus3.sh -s https://raw.githubusercontent.com/wkulhanek/ocp_advanced_development_resources/master/nexus/setup_nexus3.sh
 chmod +x setup_nexus3.sh
