@@ -13,7 +13,7 @@ echo "Setting up Parks Development Environment in project ${GUID}-parks-dev"
 
 oc project $GUID-parks-dev
 
-oc policy add-role-to-user edit system:serviceaccount:f9ff-jenkins:jenkins -n f9ff-parks-dev
+oc policy add-role-to-user edit system:serviceaccount:$GUID-jenkins:jenkins -n $GUID-parks-dev
 
 echo 'kind: StatefulSet
 apiVersion: apps/v1
@@ -71,21 +71,21 @@ spec:
           requests:
             storage: "4Gi"' | oc create -f -
 
-oc new-build --binary=true --name=mlbparks jboss-eap70-openshift:1.7 -n f9ff-parks-dev
-oc new-build --binary=true --name=nationalparks redhat-openjdk18-openshift:1.2 -n f9ff-parks-dev
-oc new-build --binary=true --name=parksmap redhat-openjdk18-openshift:1.2 -n f9ff-parks-dev
+oc new-build --binary=true --name=mlbparks jboss-eap70-openshift:1.7 -n $GUID-parks-dev
+oc new-build --binary=true --name=nationalparks redhat-openjdk18-openshift:1.2 -n $GUID-parks-dev
+oc new-build --binary=true --name=parksmap redhat-openjdk18-openshift:1.2 -n $GUID-parks-dev
 
-oc new-app f9ff-parks-dev/mlbparks:0.0-0 --allow-missing-imagestream-tags=true --name=mlbparks -l type=parksmap-backend --allow-missing-imagestream-tags=true -n f9ff-parks-dev
-oc new-app f9ff-parks-dev/nationalparks:0.0-0 --allow-missing-imagestream-tags=true --name=nationalparks -l type=parksmap-backend --allow-missing-imagestream-tags=true -n f9ff-parks-dev
-oc new-app f9ff-parks-dev/parksmap:0.0-0 --allow-missing-imagestream-tags=true --name=parksmap -l type=parksmap-frontend --allow-missing-imagestream-tags=true -n f9ff-parks-dev
+oc new-app $GUID-parks-dev/mlbparks:0.0-0 --allow-missing-imagestream-tags=true --name=mlbparks -l type=parksmap-backend --allow-missing-imagestream-tags=true -n $GUID-parks-dev
+oc new-app $GUID-parks-dev/nationalparks:0.0-0 --allow-missing-imagestream-tags=true --name=nationalparks -l type=parksmap-backend --allow-missing-imagestream-tags=true -n $GUID-parks-dev
+oc new-app $GUID-parks-dev/parksmap:0.0-0 --allow-missing-imagestream-tags=true --name=parksmap -l type=parksmap-frontend --allow-missing-imagestream-tags=true -n $GUID-parks-dev
 
-oc set triggers dc mlbparks --remove-all -n f9ff-parks-dev
-oc set triggers dc nationalparks --remove-all -n f9ff-parks-dev
-oc set triggers dc parksmap --remove-all -n f9ff-parks-dev
+oc set triggers dc mlbparks --remove-all -n $GUID-parks-dev
+oc set triggers dc nationalparks --remove-all -n $GUID-parks-dev
+oc set triggers dc parksmap --remove-all -n $GUID-parks-dev
 
-oc expose dc mlbparks --port 8080 -n f9ff-parks-dev
-oc expose dc nationalparks --port 8080 -n f9ff-parks-dev
-oc expose dc parksmap --port 8080 -n f9ff-parks-dev
+oc expose dc mlbparks --port 8080 -n $GUID-parks-dev
+oc expose dc nationalparks --port 8080 -n $GUID-parks-dev
+oc expose dc parksmap --port 8080 -n $GUID-parks-dev
 oc expose svc/parksmap -n ${GUID}-parks-dev
 
 oc set probe dc/mlbparks --readiness --initial-delay-seconds 30 --failure-threshold 3 --get-url=http://:8080/ws/healthz/ -n ${GUID}-parks-dev
@@ -101,9 +101,9 @@ oc create configmap parksdb-config -n ${GUID}-parks-dev \
        --from-literal=DB_USERNAME=mongodb_user \
        --from-literal=DB_PASSWORD=mongodb_password \
        --from-literal=DB_NAME=mongodb-internal
-oc create configmap mlbparks-config --from-literal=APPNAME="MLB Parks (Dev)" -n f9ff-parks-dev
-oc create configmap nationalparks-config --from-literal=APPNAME="National Parks (Dev)" -n f9ff-parks-dev
-oc create configmap parksmap-config --from-literal=APPNAME="ParksMap (Dev)" -n f9ff-parks-dev
+oc create configmap mlbparks-config --from-literal=APPNAME="MLB Parks (Dev)" -n $GUID-parks-dev
+oc create configmap nationalparks-config --from-literal=APPNAME="National Parks (Dev)" -n $GUID-parks-dev
+oc create configmap parksmap-config --from-literal=APPNAME="ParksMap (Dev)" -n $GUID-parks-dev
 
 oc set env dc/mlbparks --from=configmap/parksdb-config -n ${GUID}-parks-dev
 oc set env dc/mlbparks --from=configmap/mlbparks-config -n ${GUID}-parks-dev
